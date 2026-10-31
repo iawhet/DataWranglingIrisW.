@@ -189,26 +189,6 @@ sum(duplicated(h2Data$ResponseId))
 The descriptions come from the original codebook and our scoring decisions.
 `compact_codebook()` adds summaries from the actual data. Knit the Rmd to
 display the formatted codebooks.
-
-```{r variable_labels}
-#add a description to each h1Data column, in column order
-#include the source codes, meaning, and units
-var_label(h1Data) <- c(
-  "Unique participant ID (ResponseId)",
-  "Sex at birth: original codes 0=Male, 1=Female, 2=Intersex; now stored as a factor",
-  "Points allocated to partner physical attractiveness; 0-30 points from a 30-point budget; zero is valid"
-)
-
-#add a description to each h2Data column, in column order
-#include response anchors and the commitment scoring rule
-var_label(h2Data) <- c(
-  "Unique participant ID (ResponseId)",
-  "Confidence in finding another appealing partner if the current relationship ended; 1=Strongly disagree, 7=Strongly agree",
-  "Relationship commitment: mean of available prqc_4-6 responses, each 1=Not at all to 7=Extremely; no reverse coding; at least one valid response required"
-)
-
-```
-
 H1 includes participants with an ID, a valid sex-at-birth category, and six
 allocations between 0 and 30 that total 30. Factor level numbers in the
 generated table are internal R positions, not the original survey codes.
