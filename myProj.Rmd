@@ -1,0 +1,249 @@
+---
+title: "MatePrefsIrisW."
+author: "Iris Whetstone"
+date: "2026-10-21"
+output: 
+  html_document: 
+  toc: true
+  toc_depth: 2
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+H1: Respondents with doctoral or equivalent professional degrees will have lower relationship qualilty (measured with warmth, understanding, magic, and passion) in their relationships. 
+
+H2: Male respondents who spend a lot of time grooming their hair daily will also report a lot of time spent on social media daily. 
+
+## Load package and data
+
+```{r load, message=FALSE}
+# load the codeook package
+
+library(codebook)
+
+#load data
+
+raw <- read.csv("data_doctored.csv")
+
+# check row and column counts and inspect the first few rows
+
+dim(raw)
+str(raw)
+
+
+# make data with ID, level of education, perceived warm, perceived understanding, percieved magic, perceived passion, time spent grooming hair, and time spent on social media 
+
+data <- raw[,c("ResponseId","cot_educ", "Relationship_status", "Love_1","Love_5","Love_9","Love_10", "Time_A_hair_1","Time_social_media_1", "Sex_birth")]
+
+dim(data)
+str(data)
+
+```
+
+
+## 2. Check participant IDs
+
+```{r participantIds}
+
+#count nas, blanks, and duplicates
+
+summary(data$ResponseId)
+
+#inspect records with missing or blank IDs
+
+missingID <- which(is.na(data$ResponseId))
+print(data[missingID,])
+
+#remove the known empty record with no ID, then check the row count
+data <- data[!is.na(data$ResponseId),]
+
+```
+
+## 3. Recode level of education
+
+```{r levelEducation}
+# codebook: 1=None; 2=Primary; 3=Secondary; 4=High school/technical college; 5=Bachelor; 6=Master; 7=PhD/MD/JD or equivalent
+
+table(data$cot_educ,useNA="ifany")
+
+#turn Sex_birth into a factor with labels Male, Female, and Intersex
+
+data$cot_educ <- factor(data$cot_educ,
+                         levels = c(1,2,3,4,
+                                    5,6,7),
+                         labels = 
+c("None", "Primary", "Secondary", "HighSchoolorTech", "Bachelor", "Master", "PhDorEq"))
+
+#check to see if it worked
+
+table(data$cot_educ,useNA="ifany")
+
+
+```
+
+## 4. Validate relative love
+```{r loveVars}
+#group 4 chosen love variables
+
+loveVars <- c("Love_1","Love_5","Love_9","Love_10")
+
+#see summary of variables
+
+summary(data[,loveVars])
+
+#count NAs
+
+colSums(is.na(data[loveVars]))
+
+#calculate total score; leave the total NA if any item is missing
+
+data$loveTotal <- 
+rowSums(data[,loveVars],na.rm=FALSE)
+summary(data$loveTotal)
+
+#check that each observed score is between 1 and 5
+
+data$loveRange <- rowSums(
+  data[,loveVars] < 1 | data[,loveVars] > 5,
+  na.rm=TRUE
+) == FALSE
+
+#define loveValid: total present and each item in range
+
+data$loveValid <- !is.na(data$loveTotal) 
+table(data$loveValid)
+
+#make h1Data with ID, cot_educ and preference_imp_physat
+h1Data <- data[data$loveValid & ! is.na(data$cot_educ),c("ResponseId","cot_educ","Love_10")]
+
+
+```
+
+
+## 5. Hair grooming & social media time 
+```{r hairSocial}
+#recode Sex_Birth
+table(data$Sex_birth,useNA="ifany")
+
+#turn Sex_birth into a factor with labels Male, Female, and Intersex
+data$Sex_birth <- factor(data$Sex_birth,
+                         levels = c(0,1,2),
+                         labels = c("Male","Female","Intersex"))
+
+sexData <- data[data$Sex_birth %in% c("Male", "Female"),]
+
+#define the items to check, both use 0-360 minutes
+
+minutes <- c("Time_social_media_1","Time_A_hair_1")
+
+#check the summaries and missing responses
+
+summary(sexData[,minutes])
+colSums(is.na(sexData[,minutes]))
+
+#inspect the response frequencies for each item
+
+for(i in minutes){
+  print(i)
+  print(table(sexData[,i],useNA="ifany"))
+}
+
+#replace any codes outside 0-360 with NA
+for(i in minutes){
+  sexData[,i] <- ifelse(sexData[,i] %in% 1:7,sexData[,i],NA)
+}
+
+#make h2Data with sex, hair time, and social media time 
+h2Data <- sexData[!is.na(sexData$Time_social_media_1) & !is.na(sexData$Time_A_hair_1),]
+```
+
+## 7. Check the final tables
+
+```{r final_tables}
+#check rows, columns, types, and missing values in h1Data
+#one row per participant, one column per variable
+dim(h1Data)
+str(h1Data)
+head(h1Data)
+colSums(is.na(h1Data))
+table(h1Data$cot_educ,useNA="ifany")
+range(h1Data$Love_10)
+sum(duplicated(h1Data$ResponseId))
+
+#repeat the checks for h2Data; both scores should be within 1-7
+dim(h2Data)
+str(h2Data)
+head(h2Data)
+colSums(is.na(h2Data))
+range(h2Data$Time_social_media_1)
+range(h2Data$Time_A_hair_1)
+sum(duplicated(h2Data$ResponseId))
+```
+
+## 8. Add labels and generate codebooks
+
+The descriptions come from the original codebook and our scoring decisions.
+`compact_codebook()` adds summaries from the actual data. Knit the Rmd to
+display the formatted codebooks.
+
+```{r variable_labels}
+#add a description to each h1Data column, in column order
+#include the source codes, meaning, and units
+var_label(h1Data) <- c(
+  "Unique participant ID (ResponseId)",
+  "Sex at birth: original codes 0=Male, 1=Female, 2=Intersex; now stored as a factor",
+  "Points allocated to partner physical attractiveness; 0-30 points from a 30-point budget; zero is valid"
+)
+
+#add a description to each h2Data column, in column order
+#include response anchors and the commitment scoring rule
+var_label(h2Data) <- c(
+  "Unique participant ID (ResponseId)",
+  "Confidence in finding another appealing partner if the current relationship ended; 1=Strongly disagree, 7=Strongly agree",
+  "Relationship commitment: mean of available prqc_4-6 responses, each 1=Not at all to 7=Extremely; no reverse coding; at least one valid response required"
+)
+
+```
+
+H1 includes participants with an ID, a valid sex-at-birth category, and six
+allocations between 0 and 30 that total 30. Factor level numbers in the
+generated table are internal R positions, not the original survey codes.
+
+```{r h1_codebook}
+#generate the h1Data codebook
+compact_codebook(h1Data)
+
+```
+
+H2 includes participants with an ID, relationship status 1, 2, or 3, and
+valid nonmissing qoa and at least one valid commitment response.
+
+```{r h2_codebook}
+#generate the h2Data codebook
+compact_codebook(h2Data)
+
+```
+
+## 9. Save the final tables
+
+```{r save}
+#create data/processed_data if needed
+dir.create("data/processed_data",recursive=T,showWarnings=F)
+
+#save h1Data and h2Data without an extra row-number column
+write.csv(h1Data,"data/processed_data/practice_h1.csv",row.names=F)
+write.csv(h2Data,"data/processed_data/practice_h2.csv",row.names=F)
+
+#read the files back and confirm their dimensions
+h1Saved <- read.csv("data/processed_data/practice_h1.csv")
+h2Saved <- read.csv("data/processed_data/practice_h2.csv")
+dim(h1Saved)
+dim(h2Saved)
+
+```
+
+```
