@@ -27,6 +27,11 @@ library(codebook)
 
 #load data
 
+###JK: The input file is inside the raw folder in your submitted project. ###
+# Replace the line below with:
+# raw <- read.csv("raw/data_doctored.csv")
+###  End of comment ###
+
 raw <- read.csv("data_doctored.csv")
 
 # check row and column counts and inspect the first few rows
@@ -89,6 +94,15 @@ table(data$cot_educ,useNA="ifany")
 ```{r loveVars}
 #group 4 chosen love variables
 
+###JK: Consider using relationship satisfaction (prqc_1-3) for H1 instead. ###
+# These items assess satisfaction, contentment, and happiness with the relationship, which may fit your hypothesis better than selected intimacy and passion items.
+# You could average the three items (1-7, no reverse coding), focus on participants in relationships (statuses 1, 2, and 3), and describe H1 as predicting relationship satisfaction.
+# If you want to use Love items, I recommend using all Love items.
+# Love_1 and Love_5 come from intimacy, while Love_9 and Love_10 come from passion.
+# Summing these four selected items does not make a validated overall relationship-quality score.
+# Use a complete subscale from the codebook and update the variables selected from raw accordingly.
+###  End of comment ###
+
 loveVars <- c("Love_1","Love_5","Love_9","Love_10")
 
 #see summary of variables
@@ -117,6 +131,21 @@ data$loveRange <- rowSums(
 data$loveValid <- !is.na(data$loveTotal) 
 table(data$loveValid)
 
+###JK: Your H1 table currently keeps Love_10 alone instead of the composite you calculated. ###
+# loveTotal is calculated above but omitted from h1Data, so the final table and codebook use only the single passion item.
+# Also, loveRange is checked but never used when selecting valid rows.
+# After deciding on your Love items above, replace the h1Data assignment below with:
+# h1Data <- data[
+#   data$loveValid & data$loveRange & !is.na(data$cot_educ),
+#   c("ResponseId", "cot_educ", "loveTotal")
+# ]
+# Replace the later range(h1Data$Love_10) check with range(h1Data$loveTotal).
+# Your hypothesis compares doctoral/professional degree holders with others, while cot_educ currently retains all seven education categories.
+# To create the two groups explicitly, add this after creating h1Data:
+# h1Data$degree_group <- factor(ifelse(h1Data$cot_educ == "PhDorEq", "Doctoral/professional", "Other education"))
+# table(h1Data$degree_group)
+###  End of comment ###
+
 #make h1Data with ID, cot_educ and preference_imp_physat
 h1Data <- data[data$loveValid & ! is.na(data$cot_educ),c("ResponseId","cot_educ","Love_10")]
 
@@ -133,6 +162,11 @@ table(data$Sex_birth,useNA="ifany")
 data$Sex_birth <- factor(data$Sex_birth,
                          levels = c(0,1,2),
                          labels = c("Male","Female","Intersex"))
+
+###JK: H2 specifies male respondents, but this selection includes both males and females. ###
+# Replace the line below with:
+# sexData <- data[data$Sex_birth == "Male" & !is.na(data$Sex_birth), ]
+###  End of comment ###
 
 sexData <- data[data$Sex_birth %in% c("Male", "Female"),]
 
@@ -151,6 +185,21 @@ for(i in minutes){
   print(i)
   print(table(sexData[,i],useNA="ifany"))
 }
+
+###JK: These are time measurements from 0 to 360 minutes, not 1-7 ratings. ###
+# The loop below keeps only 1-7 minutes and changes valid values such as 0, 30, and 120 to NA.
+# Replace the loop below with:
+# for(i in minutes){
+#   sexData[,i] <- ifelse(sexData[,i] >= 0 & sexData[,i] <= 360, sexData[,i], NA)
+# }
+# After correcting the male-only selection above, replace the h2Data assignment with:
+# h2Data <- sexData[
+#   !is.na(sexData$Time_social_media_1) & !is.na(sexData$Time_A_hair_1),
+#   c("ResponseId", "Sex_birth", "Time_A_hair_1", "Time_social_media_1")
+# ]
+# This keeps the H2 variables without carrying unrelated education and Love columns into the final table.
+# Update the later H2 range-check comment to 0-360 rather than 1-7.
+###  End of comment ###
 
 #replace any codes outside 0-360 with NA
 for(i in minutes){
@@ -194,6 +243,11 @@ allocations between 0 and 30 that total 30. Factor level numbers in the
 generated table are internal R positions, not the original survey codes.
 
 ```{r h1_codebook}
+###JK: Add variable descriptions with var_label() before generating the codebooks, following Section 8 of my Lab03 example. ###
+# Include the education-group definition, selected composite items, scoring range, missing-data rule, and what higher scores mean for H1.
+# Replace the inclusion descriptions above and below with your own rules; the 30-point allocation, qoa, commitment, and relationship-status statements are left over from the example.
+###  End of comment ###
+
 #generate the h1Data codebook
 compact_codebook(h1Data)
 
@@ -223,7 +277,5 @@ h1Saved <- read.csv("data/processed_data/practice_h1.csv")
 h2Saved <- read.csv("data/processed_data/practice_h2.csv")
 dim(h1Saved)
 dim(h2Saved)
-
-```
 
 ```
