@@ -14,9 +14,13 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-H1: Respondents with doctoral or equivalent professional degrees will have lower relationship qualilty (measured with warmth, understanding, magic, and passion) in their relationships. 
+#### Data Wrangling ####
+
+H1: Respondents with doctoral or equivalent professional degrees will have lower relationship satisfaction in their relationships. 
 
 H2: Male respondents who spend a lot of time grooming their hair daily will also report a lot of time spent on social media daily. 
+
+
 
 ## Load package and data
 
@@ -27,18 +31,12 @@ library(codebook)
 
 #load data
 
-###JK: The input file is inside the raw folder in your submitted project. ###
-# Replace the line below with:
-# raw <- read.csv("raw/data_doctored.csv")
-###  End of comment ###
-
-raw <- read.csv("data_doctored.csv")
+raw <- read.csv("raw/data_doctored.csv")
 
 # check row and column counts and inspect the first few rows
 
 dim(raw)
 str(raw)
-
 
 # make data with ID, level of education, perceived warm, perceived understanding, percieved magic, perceived passion, time spent grooming hair, and time spent on social media 
 
@@ -48,6 +46,7 @@ dim(data)
 str(data)
 
 ```
+
 
 
 ## 2. Check participant IDs
@@ -68,162 +67,160 @@ data <- data[!is.na(data$ResponseId),]
 
 ```
 
-## 3. Recode level of education
-
-```{r levelEducation}
-# codebook: 1=None; 2=Primary; 3=Secondary; 4=High school/technical college; 5=Bachelor; 6=Master; 7=PhD/MD/JD or equivalent
-
-table(data$cot_educ,useNA="ifany")
-
-#turn Sex_birth into a factor with labels Male, Female, and Intersex
-
-data$cot_educ <- factor(data$cot_educ,
-                         levels = c(1,2,3,4,
-                                    5,6,7),
-                         labels = 
-c("None", "Primary", "Secondary", "HighSchoolorTech", "Bachelor", "Master", "PhDorEq"))
-
-#check to see if it worked
-
-table(data$cot_educ,useNA="ifany")
 
 
-```
+## 3. Recode Education Level and Relationship Satisfaction
 
-## 4. Validate relative love
-```{r loveVars}
-#group 4 chosen love variables
+```{r eduSat}
 
-###JK: Consider using relationship satisfaction (prqc_1-3) for H1 instead. ###
-# These items assess satisfaction, contentment, and happiness with the relationship, which may fit your hypothesis better than selected intimacy and passion items.
-# You could average the three items (1-7, no reverse coding), focus on participants in relationships (statuses 1, 2, and 3), and describe H1 as predicting relationship satisfaction.
-# If you want to use Love items, I recommend using all Love items.
-# Love_1 and Love_5 come from intimacy, while Love_9 and Love_10 come from passion.
-# Summing these four selected items does not make a validated overall relationship-quality score.
-# Use a complete subscale from the codebook and update the variables selected from raw accordingly.
-###  End of comment ###
+## create relLove for participants currently in relationships
 
-loveVars <- c("Love_1","Love_5","Love_9","Love_10")
+# codebook: 1,2,3 indicate participants currently in relationships 
 
-#see summary of variables
+relLove <- raw[raw$Relationship_status %in% c(1, 2, 3), ]
 
-summary(data[,loveVars])
+## recode education level
 
-#count NAs
+# examine initial data
 
-colSums(is.na(data[loveVars]))
+table(relLove$cot_educ, useNA = "ifany")
 
-#calculate total score; leave the total NA if any item is missing
+# change education level to factor labels
 
-data$loveTotal <- 
-rowSums(data[,loveVars],na.rm=FALSE)
-summary(data$loveTotal)
+relLove$cot_educ <- factor(
+  relLove$cot_educ,
+  levels = 1:7,
+  labels = c("None", "Primary", "Secondary", "HighSchoolorTech", 
+             "Bachelor", "Master", "PhDorEq")
+)
 
-#check that each observed score is between 1 and 5
+# check to see if it worked
 
-data$loveRange <- rowSums(
-  data[,loveVars] < 1 | data[,loveVars] > 5,
-  na.rm=TRUE
-) == FALSE
+table(relLove$cot_educ, useNA = "ifany")
 
-#define loveValid: total present and each item in range
+# create two groups for comparison and other levels of education 
 
-data$loveValid <- !is.na(data$loveTotal) 
-table(data$loveValid)
+relLove$degreeGroup <- factor(
+  ifelse(relLove$cot_educ == "PhDorEq", "Doctoral/professional", "Other education")
+)
 
-###JK: Your H1 table currently keeps Love_10 alone instead of the composite you calculated. ###
-# loveTotal is calculated above but omitted from h1Data, so the final table and codebook use only the single passion item.
-# Also, loveRange is checked but never used when selecting valid rows.
-# After deciding on your Love items above, replace the h1Data assignment below with:
-# h1Data <- data[
-#   data$loveValid & data$loveRange & !is.na(data$cot_educ),
-#   c("ResponseId", "cot_educ", "loveTotal")
-# ]
-# Replace the later range(h1Data$Love_10) check with range(h1Data$loveTotal).
-# Your hypothesis compares doctoral/professional degree holders with others, while cot_educ currently retains all seven education categories.
-# To create the two groups explicitly, add this after creating h1Data:
-# h1Data$degree_group <- factor(ifelse(h1Data$cot_educ == "PhDorEq", "Doctoral/professional", "Other education"))
-# table(h1Data$degree_group)
-###  End of comment ###
+# check to see if it worked 
 
-#make h1Data with ID, cot_educ and preference_imp_physat
-h1Data <- data[data$loveValid & ! is.na(data$cot_educ),c("ResponseId","cot_educ","Love_10")]
+table(relLove$degreeGroup, useNA = "ifany")
 
+## recode relationship satisfaction 
+
+# define satisfaction items 
+
+satVars <- c("prqc_1", "prqc_2", "prqc_3")
+
+# inspect range of satisfaction items (1-7)
+
+summary(relLove[, satVars])
+
+# compute composite score 
+
+relLove$relSat <- rowMeans(relLove[, satVars], na.rm = TRUE)
+
+# replace unusable data (3/3 NA)
+
+relLove$relSat[is.nan(relLove$relSat)] <- NA
+
+# check to see if composite score is normal 
+
+summary(relLove$relSat)
+
+# define h1 data 
+
+h1Data <- relLove[!is.na(relLove$relSat) & !is.na(relLove$degreeGroup), 
+                  c("ResponseId", "cot_educ",  "degreeGroup", "relSat")
+]
+
+# make sure it worked 
+
+dim(h1Data)
+summary(h1Data)
+table(h1Data$degreeGroup, useNA = "ifany")
 
 ```
 
 
-## 5. Hair grooming & social media time 
-```{r hairSocial}
-#recode Sex_Birth
+
+## Recode Time Spent on Hair and Social Media 
+
+```{r sexTime}
+
+## Recode sex at birth 
+
+# view 
+
 table(data$Sex_birth,useNA="ifany")
 
-#turn Sex_birth into a factor with labels Male, Female, and Intersex
+# turn Sex_birth into a factor with proper labels 
+
 data$Sex_birth <- factor(data$Sex_birth,
                          levels = c(0,1,2),
                          labels = c("Male","Female","Intersex"))
 
-###JK: H2 specifies male respondents, but this selection includes both males and females. ###
-# Replace the line below with:
-# sexData <- data[data$Sex_birth == "Male" & !is.na(data$Sex_birth), ]
-###  End of comment ###
+# create maleData 
 
-sexData <- data[data$Sex_birth %in% c("Male", "Female"),]
+maleData <- data[data$Sex_birth == "Male" & !is.na(data$Sex_birth), ]
 
-#define the items to check, both use 0-360 minutes
+#define the minutes to check that both use 0-360 minutes
 
-minutes <- c("Time_social_media_1","Time_A_hair_1")
+mins <- c("Time_social_media_1","Time_A_hair_1")
 
 #check the summaries and missing responses
 
-summary(sexData[,minutes])
-colSums(is.na(sexData[,minutes]))
+summary(maleData[,mins])
+colSums(is.na(maleData[,mins]))
 
 #inspect the response frequencies for each item
 
-for(i in minutes){
+for(i in mins){
   print(i)
-  print(table(sexData[,i],useNA="ifany"))
+  print(table(maleData[,i],useNA="ifany"))
 }
-
-###JK: These are time measurements from 0 to 360 minutes, not 1-7 ratings. ###
-# The loop below keeps only 1-7 minutes and changes valid values such as 0, 30, and 120 to NA.
-# Replace the loop below with:
-# for(i in minutes){
-#   sexData[,i] <- ifelse(sexData[,i] >= 0 & sexData[,i] <= 360, sexData[,i], NA)
-# }
-# After correcting the male-only selection above, replace the h2Data assignment with:
-# h2Data <- sexData[
-#   !is.na(sexData$Time_social_media_1) & !is.na(sexData$Time_A_hair_1),
-#   c("ResponseId", "Sex_birth", "Time_A_hair_1", "Time_social_media_1")
-# ]
-# This keeps the H2 variables without carrying unrelated education and Love columns into the final table.
-# Update the later H2 range-check comment to 0-360 rather than 1-7.
-###  End of comment ###
 
 #replace any codes outside 0-360 with NA
-for(i in minutes){
-  sexData[,i] <- ifelse(sexData[,i] %in% 1:7,sexData[,i],NA)
+
+for(i in mins){
+maleData[,i] <- ifelse(maleData[,i] >= 0 & maleData[,i] <= 360, maleData[,i], NA)
 }
 
-#make h2Data with sex, hair time, and social media time 
-h2Data <- sexData[!is.na(sexData$Time_social_media_1) & !is.na(sexData$Time_A_hair_1),]
+# define h2 data 
+
+h2Data <- maleData[
+!is.na(maleData$Time_social_media_1) & !is.na(maleData$Time_A_hair_1),
+c("ResponseId", "Sex_birth", "Time_A_hair_1", "Time_social_media_1")
+]
+
+#make sure it worked and is only using male data 
+
+dim(h2Data)
+colnames(h2Data)
+table(h2Data$Sex_birth, useNA = "always")
+
 ```
+
+
 
 ## 7. Check the final tables
 
-```{r final_tables}
-#check rows, columns, types, and missing values in h1Data
-#one row per participant, one column per variable
+```{r finalTables}
+
+#check rows, columns, types, and missing values in h1Data, make sure scores are between 1-7
+
 dim(h1Data)
 str(h1Data)
 head(h1Data)
 colSums(is.na(h1Data))
 table(h1Data$cot_educ,useNA="ifany")
-range(h1Data$Love_10)
+range(h1Data$satVars)
 sum(duplicated(h1Data$ResponseId))
 
-#repeat the checks for h2Data; both scores should be within 1-7
+#repeat the checks for h2Data; both scores should be within 0-360 
+
 dim(h2Data)
 str(h2Data)
 head(h2Data)
@@ -231,51 +228,369 @@ colSums(is.na(h2Data))
 range(h2Data$Time_social_media_1)
 range(h2Data$Time_A_hair_1)
 sum(duplicated(h2Data$ResponseId))
+
 ```
 
+
+
 ## 8. Add labels and generate codebooks
+
+```{r variableLabels}
+
+#add a description to each h1Data column, in column order, include the source codes, meaning, and units
+
+var_label(h1Data) <- c(
+  "Unique participant ID (ResponseId)",
+  "Level of education: all valid responses for level of education categorized as None, Primary, Secondary, HighSchoolorTech, Bachelor, Master, PhDorEq",
+  "Doctoral/profession or other: degreeGroup categorized as all valid Doctoral/professional responses or Other education (any other level of education) responses",
+  "Relationship satisfaction: labeled relSat, mean of available prqc_1-3 responses, each 1=Not at all to 7=Extremely; no reverse coding; at least one valid response required"
+)
+
+#add a description to each h2Data column, in column order
+#include response anchors and the commitment scoring rule
+
+var_label(h2Data) <- c(
+  "Unique participant ID (ResponseId)",
+  "Sex at birth: labeled Sex_birth, displays all male data",
+  "Time spent on grooming hair: labled Time_A_hair_1, all valid responses reporting daily time spent grooming hair between 0-360 minutes",
+  "Time spent on social media: labeled Time_social_media_1, all valid responses reporting daily time spent on social media between 0-360 minutes"
+)
+
+```
+
+
 
 The descriptions come from the original codebook and our scoring decisions.
 `compact_codebook()` adds summaries from the actual data. Knit the Rmd to
 display the formatted codebooks.
-H1 includes participants with an ID, a valid sex-at-birth category, and six
-allocations between 0 and 30 that total 30. Factor level numbers in the
-generated table are internal R positions, not the original survey codes.
+
+
+
+H1 includes participants with an ID, relationship status 1, 2, or 3, and at least one of three non-missing scores between 1-7 Likert-type scales. Factor level numbers in the generated table are internal R positions, not the original survey codes.
 
 ```{r h1_codebook}
-###JK: Add variable descriptions with var_label() before generating the codebooks, following Section 8 of my Lab03 example. ###
-# Include the education-group definition, selected composite items, scoring range, missing-data rule, and what higher scores mean for H1.
-# Replace the inclusion descriptions above and below with your own rules; the 30-point allocation, qoa, commitment, and relationship-status statements are left over from the example.
-###  End of comment ###
 
-#generate the h1Data codebook
+# generate h2Data codebook
+
 compact_codebook(h1Data)
 
 ```
 
-H2 includes participants with an ID, relationship status 1, 2, or 3, and
-valid nonmissing qoa and at least one valid commitment response.
+
+
+H2 includes participants with an ID, a valid sex-at-birth category, and both a valid nonmissing responses for time spent on grooming hair and social media between 0-360 minutes.
 
 ```{r h2_codebook}
-#generate the h2Data codebook
+
+#generate h2Data codebook
+
 compact_codebook(h2Data)
 
 ```
 
-## 9. Save the final tables
+## 9. Save processed data 
 
-```{r save}
-#create data/processed_data if needed
-dir.create("data/processed_data",recursive=T,showWarnings=F)
+```{r saveProcessed}
 
 #save h1Data and h2Data without an extra row-number column
-write.csv(h1Data,"data/processed_data/practice_h1.csv",row.names=F)
-write.csv(h2Data,"data/processed_data/practice_h2.csv",row.names=F)
+
+write.csv(h1Data,"processed_data/practice_h1.csv",row.names=F)
+
+write.csv(h2Data,"processed_data/practice_h2.csv",row.names=F)
 
 #read the files back and confirm their dimensions
-h1Saved <- read.csv("data/processed_data/practice_h1.csv")
-h2Saved <- read.csv("data/processed_data/practice_h2.csv")
+
+h1Saved <- read.csv("processed_data/practice_h1.csv")
+h2Saved <- read.csv("processed_data/practice_h2.csv")
+
 dim(h1Saved)
 dim(h2Saved)
 
 ```
+
+
+
+#### Data Visualization ####
+
+```{r loadPackages}
+
+library(ggplot2)
+library(ggrain)
+
+```
+
+
+
+## 1. Load processed data 
+
+```{r Data}
+
+#load processed data
+
+h1Data <- read.csv("processed_data/practice_h1.csv")
+h2Data <- read.csv("processed_data/practice_h2.csv")
+
+```
+
+
+
+## 2. H1 boxplot 
+ˆ
+```{r h1Boxplot}
+
+#Box plot
+#The line is the median; the box covers the middle 50% of responses (Q1-Q3).
+#Whiskers reach the most extreme observations within 1.5 IQR of the box edges.
+#Points beyond the whiskers are not necessarily errors.
+
+h1Box <- ggplot(data=h1Data,
+                aes(x=degreeGroup,
+                    y=relSat,
+                    fill=degreeGroup)) +
+  geom_boxplot()+
+  labs(x="Doctorate/professional or other level of education",
+       y="Mean relationship satisfaction score",
+       fill="Doctorate/professional or other level of education",
+       title="Relationship Satisfaction by Level of Education")+
+  theme_gray(base_size=15)
+
+h1Box
+
+
+```
+
+
+
+## 3. H1 violin plot with boxplot
+
+```{r h1Violin}
+
+#Violin Plot
+#Wider sections show where responses are more concentrated within each group.
+#The shape depends on smoothing; integer scores can create bumps.
+#Violin width does not show group sample size. The box adds the median and IQR.
+
+h1Viol <- ggplot(data=h1Data,
+                 aes(x= degreeGroup,
+                    y= relSat,
+                    fill= degreeGroup))+
+  geom_violin()+
+  geom_boxplot(width=.12)+
+labs(x="Doctorate/professional or other level of education",
+       y="Mean relationship satisfaction score",
+       fill="Doctorate/professional or other level of education",
+       title="Relationship Satisfaction by Level of Education")+
+  theme_gray(base_size=15)
+
+h1Viol
+
+```
+
+
+
+## 4. H1 raincloud plot
+
+```{r h1Rain}
+
+# raincloud plot for h1
+
+h1Rain <- ggplot(data=h1Data,
+                 aes(x= degreeGroup,
+                    y= relSat,
+                    fill= degreeGroup))+
+  geom_rain(alpha = .5)+
+  labs(x= "Doctorate/professional or other level of education",
+       y="Mean relationship satisfaction score",
+       fill="Doctorate/professional or other level of education",
+       title="Relationship Satisfaction by Level of Education")+
+  theme_gray(base_size=15)
+
+h1Rain
+
+
+```
+
+
+
+## 5. H2 scatter plot 
+
+```{r h2Scatterplot}
+
+# check number of rows in h2 data 
+
+nrow(h2Data)
+nrow(unique(h2Data[,c("Time_A_hair_1","Time_social_media_1")]))
+
+# jitter scatterplot 
+
+h2Jitter <- ggplot(
+  data=h2Data,
+                    aes(x= Time_A_hair_1,
+                        y= Time_social_media_1))+
+    geom_jitter(width = .12,height=.04,alpha=.04,size = .6)+
+    labs(x= "Time spent grooming hair daily (minutes)",
+       y= "Time spent on social media daily (minutes)",
+       title= "Minutes Spent Grooming Hair Daily and Minutes Spent on Social Media Daily")+
+  theme_gray(base_size = 18)
+
+
+h2Jitter
+
+```
+
+
+
+## 6. H2 jittered scatterplot with smooth line
+
+```{r}
+
+# scatter Plot with line
+
+h2Line <- h2Jitter + geom_smooth(method="lm")
+
+h2Line
+
+```
+
+
+
+## 7. Save plots 
+
+```{r}
+
+# Save PNG files in the project's figures folder
+
+ggsave("figures/h1_raincloud.png",plot=h1Rain,width=10,height=6,dpi=300)
+ggsave("figures/h2_scatter.png",plot=h2Line,width=10,height=6,dpi=300)
+
+```
+
+
+
+#### Descriptive Statistics ####
+
+
+
+## 1. Load package
+
+```{r loadPackage}
+
+library(psych)
+
+```
+
+
+
+## 2. Load data 
+
+```{r loadData}
+
+h1Data <- read.csv("processed_data/practice_h1.csv")
+h2Data <- read.csv("processed_data/practice_h2.csv")
+
+```
+
+
+
+## 3. Look at distribution 
+
+```{r histogram}
+
+# look at distributions with histograms and use readable labels 
+
+hist(h1Data$relSat,
+     main = "Distribution of mean relationship satisfaction scores",
+     xlab = "Mean relationship satisfaction scores")
+
+hist(h2Data$Time_A_hair_1,
+     main = "Distribution of time spent on hair grooming",
+     xlab = "Time spent grooming hair (0-360 minutes)")
+
+hist(h2Data$Time_social_media_1,
+     main = "Distribution of time spent on social media",
+     xlab = "Time spent on social media (0-360 minutes)")
+
+```
+
+
+
+## 4. Stats one at a time
+
+```{r stats}
+
+# relSat mean, median, range, quartiles 1 & 3, number of people in each category, IQR
+
+summary(h1Data$relSat, na.rm = TRUE)
+table(h1Data$relSat, useNA = "ifany")
+IQR(h1Data$relSat, na.rm = TRUE)
+
+# Time_A_hair_1 mean, median, range, quartiles 1 & 3, number of people in each category, IQR
+
+summary(h2Data$Time_A_hair_1, na.rm = TRUE)
+table(h2Data$Time_A_hair_1, useNA = "ifany")
+IQR(h2Data$Time_A_hair_1, na.rm = TRUE)
+
+# Time_social_media_1 mean, median, range, quartiles 1 & 3, number of people in each category, IQR
+
+summary(h2Data$Time_social_media_1, na.rm = TRUE)
+table(h2Data$Time_social_media_1, useNA = "ifany")
+IQR(h2Data$Time_social_media_1, na.rm = TRUE)
+
+
+```
+
+
+
+## 5. Standardize a variable 
+
+```{r standardize}
+
+# create standardized score column for relationship satisfaction 
+
+h1Data$relSatz <- as.numeric(scale(h1Data$relSat))
+head(h1Data[, c("relSat", "relSatz")])
+
+# check to see that the standardized scores have mean approximately 0 and standard deviation 1
+
+mean(h1Data$relSatz, na.rm = TRUE)
+sd(h1Data$relSatz, na.rm = TRUE)
+
+```
+
+
+
+## 6. Covariance and correlation
+
+```{r covCorr}
+
+# covariance for h2.
+
+cov(h2Data$Time_A_hair_1, h2Data$Time_social_media_1, use = "complete.obs")
+
+# Pearson correlation for h2
+
+cor(h2Data$Time_A_hair_1, h2Data$Time_social_media_1, use = "complete.obs")
+
+# define corData for h2
+
+corData <- h2Data[, c("Time_A_hair_1", "Time_social_media_1")]
+
+# correlation matrix to see correlation for each pair of columns in h2 
+
+cor(corData, use = "complete.obs")
+
+```
+
+
+
+## 7. Another combined summary 
+
+```{r}
+
+# use psych to look at descriptive stats for h2 corData
+
+psych::describe(corData)
+
+```
+
+
