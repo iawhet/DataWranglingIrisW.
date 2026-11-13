@@ -312,6 +312,8 @@ dim(h2Saved)
 
 #### Data Visualization ####
 
+###JK: Good work! Nothing to revise :) ###
+
 ```{r loadPackages}
 
 library(ggplot2)
@@ -468,6 +470,8 @@ ggsave("figures/h2_scatter.png",plot=h2Line,width=10,height=6,dpi=300)
 
 
 #### Descriptive Statistics ####
+
+###JK: Good work! Nothing to revise :) ###
 
 
 
