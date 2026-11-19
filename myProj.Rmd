@@ -10,6 +10,12 @@ editor_options:
   chunk_output_type: console
 ---
 
+###JK: Your published report opens correctly; please also submit the Quarto source for Lab06. ###
+# I found this Rmd and the published HTML, but no .qmd file in the repository.
+# Create and push a Quarto (.qmd) version using your own hypotheses, variable descriptions, descriptive statistics, and graphs.
+###  End of comment ###
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
