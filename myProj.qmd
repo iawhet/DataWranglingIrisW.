@@ -1,0 +1,125 @@
+---
+title: "myProj"
+author: "Iris Whetstone"
+format: 
+  html: 
+    toc: true 
+    toc-location: body
+    code-fold: true
+    embed-resources: true 
+execute: 
+  echo: true 
+editor: visual
+---
+
+```{r}
+#| label: load-data
+#| include: false
+library(ggplot2)
+library(ggrain)
+
+h1Data <- read.csv("processed_data/practice_h1.csv")
+
+h2Data <- read.csv("processed_data/practice_h2.csv")
+```
+
+## Hypothesis 1
+
+Respondents with doctoral or equivalent professional degrees will have lower relationship satisfaction in their relationships.
+
+### Variables and descriptive statistics
+
+\- **Degree Group (**\`**degreeGroup**\`**):** A categorical variable with two groups: doctoral/professional and other education. Other education describes any level of education reported below a doctoral/professional degree.
+
+\- **Relationship Satisfaction (**\`**relSat**\`**):** A composite variable including the average scores of each participant in a relationship's responses to 7 point Likert-type scales asking for their relationship satisfaction, contentment, and happiness: \`prqc_1\`, \`prqc_2\`, \`prqc_3\`.
+
+This dataset only includes respondents who were dating, in a commited relationship, or married.
+
+```{r}
+#| label: h1-descriptives
+# Count respondents in each group.
+table(h1Data$degreeGroup)
+
+# Summarize relationship satisfaction  separately for each group. 
+by(h1Data$relSat, h1Data$degreeGroup, summary)
+```
+
+### Graph
+
+@fig-satisfaction shows the distribution of average relationship satisfaction by degree group. The half-violin shows the shape of the distribution, the box summarizes the median and quartiles, and the dots represent individual responses.
+
+```{r}
+#| label: fig-satisfaction
+#| fig-cap: "Average relationship satisfaction by degree group."
+#| fig-width: 8 
+#| fig-height: 5 
+
+h1Viol <- ggplot(data=h1Data,
+                 aes(x= degreeGroup,
+                     y= relSat,
+                     fill= degreeGroup))+
+  geom_violin()+
+  geom_boxplot(width=.12)+
+  labs(x="Doctorate/professional or other level of education",
+       y="Mean relationship satisfaction score",
+       fill="Doctorate/professional or other level of education",
+       title="Relationship Satisfaction by Level of Education")+
+  theme_gray(base_size=15)
+
+h1Viol
+```
+
+## H2. Male time spent grooming hair and time spent on social media.
+
+Male respondents who spend a lot of time grooming their hair daily will also report a lot of time spent on social media daily.
+
+### Variables and descriptive statistics
+
+\- \*\*Daily time spent grooming hair (Time_A_hair_1):\*\* a single variable of each male respondents time spent grooming their hair daily between 0-360 minutes.
+
+\- \*\*Daily time spent on social media (Time_social_media_1):\*\* a single variable of each male respondents time spent on social media daily between 0-360 minutes.
+
+This data set only includes respondents who answered "male" when asked for their sex at birth.
+
+```{r}
+#| label: h2-descriptives
+summary(h2Data[, c("Time_A_hair_1", "Time_social_media_1")])
+```
+
+### Graph
+
+@fig-time shows the relationship between male respondents' time spent grooming their hair daily and time spent on social media daily. Points are jittered to make overlapping responses easier to see; the recorded scores are unchanged. The line summarizes the linear trend.
+
+```{r}
+#| label: fig-time
+#| fig-cap: "Daily time spent grooming hair and daily time spent on social media."
+#| fig-width: 8
+#| fig-height: 5 
+
+nrow(h2Data)
+nrow(unique(h2Data[,c("Time_A_hair_1","Time_social_media_1")]))
+
+h2Jitter <- ggplot(
+  data=h2Data,
+  aes(x= Time_A_hair_1,
+      y= Time_social_media_1))+
+  geom_jitter(width = .12,height=.04,alpha=.04,size = .6)+
+  labs(x= "Time spent grooming hair daily (minutes)",
+       y= "Time spent on social media daily (minutes)",
+       title= "Minutes Spent Grooming Hair Daily and Minutes Spent on Social Media Daily")+
+  theme_gray(base_size = 18)
+
+h2Line <- h2Jitter + geom_smooth(method="lm")
+
+h2Line
+```
+
+### Observed trend
+
+```{r}
+#| label: correlation
+r <- cor(h2Data$Time_A_hair_1, h2Data$Time_social_media_1, use = "complete.obs")
+round(r,2)
+```
+
+The correlation was 0.25, indicating a weak positive association. Male respondents who reported more time spent on grooming their hair daily reported more time spent on social media daily.
